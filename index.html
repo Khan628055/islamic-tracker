@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#1a5c38"/>
+<title>Islamic Daily Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root { --green:#1a5c38; --gold:#c9a84c; --light:#f4f0e8; --card:#fff; --text:#1a1a1a; --sub:#666; --done:#e6f4ec; }
+  body { font-family:'Segoe UI',sans-serif; background:var(--light); color:var(--text); min-height:100vh; }
+
+  .header { background:var(--green); color:#fff; padding:18px 16px 14px; text-align:center; position:sticky; top:0; z-index:10; box-shadow:0 2px 8px #0003; }
+  .header h1 { font-size:1.2rem; letter-spacing:1px; }
+  .header .date { font-size:0.82rem; color:#b2d8c0; margin-top:2px; }
+  .header .bismillah { font-size:1rem; color:var(--gold); margin-bottom:4px; }
+
+  .nav { display:flex; background:#fff; border-bottom:1px solid #e0ddd5; position:sticky; top:74px; z-index:9; }
+  .nav button { flex:1; padding:11px 0; border:none; background:none; font-size:0.82rem; color:var(--sub); cursor:pointer; border-bottom:3px solid transparent; transition:all 0.2s; }
+  .nav button.active { color:var(--green); border-bottom-color:var(--green); font-weight:600; }
+
+  .page { display:none; padding:16px; max-width:480px; margin:0 auto; }
+  .page.active { display:block; }
+
+  .progress-card { background:var(--green); color:#fff; border-radius:14px; padding:16px 20px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
+  .progress-card .score { font-size:2rem; font-weight:700; }
+  .progress-card .label { font-size:0.8rem; color:#b2d8c0; }
+  .progress-bar-wrap { background:#fff3; border-radius:99px; height:8px; margin-top:8px; }
+  .progress-bar { background:var(--gold); border-radius:99px; height:8px; transition:width 0.4s; }
+  .streak { font-size:0.85rem; color:var(--gold); margin-top:4px; }
+
+  .section-title { font-size:0.75rem; font-weight:700; color:var(--sub); text-transform:uppercase; letter-spacing:1px; margin:12px 0 6px; }
+  .habit-item { background:var(--card); border-radius:12px; padding:13px 14px; margin-bottom:8px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 4px #0001; cursor:pointer; transition:background 0.2s; user-select:none; }
+  .habit-item.done { background:var(--done); }
+  .habit-icon { font-size:1.3rem; width:32px; text-align:center; }
+  .habit-name { flex:1; font-size:0.95rem; }
+  .habit-item.done .habit-name { color:var(--green); }
+  .check { width:24px; height:24px; border-radius:50%; border:2px solid #ccc; display:flex; align-items:center; justify-content:center; font-size:0.85rem; transition:all 0.2s; flex-shrink:0; }
+  .habit-item.done .check { background:var(--green); border-color:var(--green); color:#fff; }
+
+  .add-form { background:#fff; border-radius:12px; padding:14px; margin-top:12px; box-shadow:0 1px 4px #0001; }
+  .add-form input, .add-form select { width:100%; border:1px solid #ddd; border-radius:8px; padding:10px 12px; font-size:0.9rem; outline:none; margin-bottom:8px; background:#fff; }
+  .add-form input:focus, .add-form select:focus { border-color:var(--green); }
+  .emoji-pick { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .emoji-pick span { font-size:1.2rem; cursor:pointer; padding:4px 6px; border-radius:6px; border:2px solid transparent; }
+  .emoji-pick span.sel { border-color:var(--green); background:var(--done); }
+  .btn { background:var(--green); color:#fff; border:none; border-radius:8px; padding:10px 18px; font-size:0.9rem; cursor:pointer; width:100%; }
+  .btn:active { opacity:0.85; }
+  .del-btn { background:none; border:none; color:#ccc; font-size:1rem; cursor:pointer; padding:4px; }
+  .edit-btn { background:none; border:none; color:#aaa; font-size:1rem; cursor:pointer; padding:4px; }
+  .cat-btn { font-size:0.8rem; padding:6px 10px; border-radius:20px; border:2px solid #ddd; cursor:pointer; background:#fff; }
+  .cat-btn.sel { border-color:var(--green); background:var(--done); color:var(--green); font-weight:600; }
+
+  /* MODAL */
+  .modal-overlay { display:none; position:fixed; inset:0; background:#0007; z-index:100; align-items:flex-end; justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:#fff; border-radius:18px 18px 0 0; padding:20px 16px 32px; width:100%; max-width:480px; animation:slideUp 0.25s ease; }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .modal h3 { font-size:1rem; color:var(--green); margin-bottom:14px; }
+  .modal input, .modal select { width:100%; border:1px solid #ddd; border-radius:8px; padding:10px 12px; font-size:0.9rem; outline:none; margin-bottom:10px; background:#fff; }
+  .modal input:focus, .modal select:focus { border-color:var(--green); }
+  .modal-btns { display:flex; gap:8px; margin-top:4px; }
+  .modal-btns button { flex:1; padding:10px; border-radius:8px; border:none; font-size:0.9rem; cursor:pointer; }
+  .modal-btns .confirm { background:var(--green); color:#fff; }
+  .modal-btns .cancel { background:#f0ede5; color:var(--text); }
+  .modal-label { font-size:0.75rem; color:var(--sub); font-weight:600; margin-bottom:6px; }
+
+  /* CALENDAR */
+  .cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .cal-header button { background:none; border:none; font-size:1.2rem; cursor:pointer; color:var(--green); padding:4px 10px; }
+  .cal-header span { font-weight:600; font-size:1rem; }
+  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+  .cal-day-name { text-align:center; font-size:0.68rem; color:var(--sub); font-weight:600; padding:4px 0; }
+  .cal-day { text-align:center; padding:7px 2px; border-radius:8px; font-size:0.82rem; cursor:pointer; position:relative; }
+  .cal-day.today { background:var(--green); color:#fff; font-weight:700; }
+  .cal-day.has-data::after { content:''; display:block; width:5px; height:5px; background:var(--gold); border-radius:50%; margin:2px auto 0; }
+  .cal-day.empty { opacity:0; pointer-events:none; }
+  .cal-day:not(.today):not(.empty):hover { background:var(--done); }
+  .day-detail { background:#fff; border-radius:12px; padding:14px; margin-top:14px; box-shadow:0 1px 4px #0001; }
+  .day-detail h3 { font-size:0.9rem; color:var(--green); margin-bottom:10px; }
+  .day-log-item { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f0ede5; font-size:0.88rem; }
+  .day-log-item:last-child { border-bottom:none; }
+  .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .dot.done { background:var(--green); }
+  .dot.miss { background:#ddd; }
+
+  .stat-card { background:#fff; border-radius:12px; padding:16px; margin-bottom:10px; box-shadow:0 1px 4px #0001; display:flex; align-items:center; gap:14px; }
+  .stat-icon { font-size:1.8rem; }
+  .stat-val { font-size:1.5rem; font-weight:700; color:var(--green); }
+  .stat-label { font-size:0.78rem; color:var(--sub); }
+
+  .new-cat-row { display:flex; gap:6px; margin-bottom:10px; }
+  .new-cat-row input { flex:1; border:1px solid #ddd; border-radius:8px; padding:8px 10px; font-size:0.85rem; outline:none; }
+  .new-cat-row input:focus { border-color:var(--green); }
+  .new-cat-row button { background:var(--green); color:#fff; border:none; border-radius:8px; padding:8px 12px; font-size:0.85rem; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="bismillah">بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ</div>
+  <h1>Islamic Daily Tracker</h1>
+  <div class="date" id="headerDate"></div>
+</div>
+
+<div class="nav">
+  <button class="active" onclick="showPage('today',this)">📋 Today</button>
+  <button onclick="showPage('calendar',this)">📅 History</button>
+  <button onclick="showPage('stats',this)">📊 Stats</button>
+  <button onclick="showPage('manage',this)">⚙️ Manage</button>
+</div>
+
+<!-- TODAY -->
+<div class="page active" id="page-today">
+  <div class="progress-card">
+    <div>
+      <div class="label">Today's Progress</div>
+      <div class="score" id="scoreText">0/0</div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+      <div class="streak" id="streakText"></div>
+    </div>
+    <div style="font-size:2.5rem">🕌</div>
+  </div>
+  <div id="habitList"></div>
+</div>
+
+<!-- CALENDAR -->
+<div class="page" id="page-calendar">
+  <div class="cal-header">
+    <button onclick="changeMonth(-1)">‹</button>
+    <span id="calMonthLabel"></span>
+    <button onclick="changeMonth(1)">›</button>
+  </div>
+  <div class="cal-grid" id="calGrid"></div>
+  <div class="day-detail" id="dayDetail" style="display:none"></div>
+</div>
+
+<!-- STATS -->
+<div class="page" id="page-stats">
+  <div class="section-title">Overall Stats</div>
+  <div id="statsContent"></div>
+</div>
+
+<!-- MANAGE -->
+<div class="page" id="page-manage">
+  <div class="section-title">Your Habits <span style="font-weight:400;color:#aaa">(tap to edit)</span></div>
+  <div id="manageList"></div>
+
+  <div class="section-title" style="margin-top:16px">Add Custom Habit</div>
+  <div class="add-form">
+    <input id="newHabitName" placeholder="Habit name (e.g. Learn AI)" maxlength="40"/>
+    <div class="modal-label">CATEGORY</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px" id="catPick"></div>
+    <div class="new-cat-row">
+      <input id="newCatName" placeholder="Or type a new category…" maxlength="30"/>
+      <button onclick="addCategory()">+ Add</button>
+    </div>
+    <div class="modal-label">ICON</div>
+    <div class="emoji-pick" id="emojiPick"></div>
+    <button class="btn" onclick="addHabit()">+ Add Habit</button>
+  </div>
+</div>
+
+<!-- EDIT HABIT MODAL -->
+<div class="modal-overlay" id="editModal" onclick="closeModal(event)">
+  <div class="modal">
+    <h3>✏️ Edit Habit</h3>
+    <div class="modal-label">NAME</div>
+    <input id="editName" placeholder="Habit name" maxlength="40"/>
+    <div class="modal-label">MOVE TO CATEGORY</div>
+    <select id="editCat"></select>
+    <div class="modal-label">ICON</div>
+    <div class="emoji-pick" id="editEmojiPick" style="margin-bottom:14px"></div>
+    <div class="modal-btns">
+      <button class="cancel" onclick="closeEditModal()">Cancel</button>
+      <button class="confirm" onclick="saveHabitEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const EMOJIS = ['📚','🏋️','🧘','💡','✏️','🎯','💻','🌙','🤲','📖','🌿','🔬','🎓','🧠','⚡','🕌','🔖','🌅','☀️','🌤️','🌇','⭐','🔹'];
+const DEFAULT_CATS = ['Prayers','Worship','Personal','Learning','Health'];
+const CAT_ICONS = {Prayers:'🕌',Worship:'🤲',Personal:'⭐',Learning:'📚',Health:'🏋️'};
+const DEFAULT_HABITS = [
+  {id:'fajr',    name:'Fajr',            icon:'🌅', cat:'Prayers'},
+  {id:'dhuhr',   name:'Dhuhr',           icon:'☀️', cat:'Prayers'},
+  {id:'asr',     name:'Asr',             icon:'🌤️', cat:'Prayers'},
+  {id:'maghrib', name:'Maghrib',          icon:'🌇', cat:'Prayers'},
+  {id:'isha',    name:'Isha',             icon:'🌙', cat:'Prayers'},
+  {id:'fast',    name:'Fasting',          icon:'🌙', cat:'Worship'},
+  {id:'adhkar',  name:'Adhkar / Dhikr',   icon:'🤲', cat:'Worship'},
+  {id:'quran',   name:'Quran Recitation', icon:'📖', cat:'Worship'},
+  {id:'tafsir',  name:'Tafsir Study',     icon:'🔖', cat:'Worship'},
+  {id:'learn',   name:'Learn Something',  icon:'💡', cat:'Personal'},
+  {id:'workout', name:'Workout',          icon:'🏋️', cat:'Health'},
+  {id:'read',    name:'Reading',          icon:'📚', cat:'Learning'},
+];
+
+let selEmoji = EMOJIS[0], selCat = 'Prayers';
+let editingId = null, editSelEmoji = EMOJIS[0];
+
+// ── STORAGE ──
+function loadHabits() { const s=localStorage.getItem('habits'); return s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_HABITS)); }
+function saveHabits(h) { localStorage.setItem('habits',JSON.stringify(h)); }
+function loadCats() { const s=localStorage.getItem('categories'); return s?JSON.parse(s):[...DEFAULT_CATS]; }
+function saveCats(c) { localStorage.setItem('categories',JSON.stringify(c)); }
+function todayKey() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function loadLog(k) { const s=localStorage.getItem('log_'+k); return s?JSON.parse(s):{}; }
+function saveLog(k,l) { localStorage.setItem('log_'+k,JSON.stringify(l)); }
+
+// ── TODAY ──
+function renderToday() {
+  const habits=loadHabits(), key=todayKey(), log=loadLog(key);
+  const cats=[...new Set(habits.map(h=>h.cat))];
+  let html='';
+  cats.forEach(cat=>{
+    html+=`<div class="section-title">${CAT_ICONS[cat]||'🔹'} ${cat}</div>`;
+    habits.filter(h=>h.cat===cat).forEach(h=>{
+      const done=!!log[h.id];
+      html+=`<div class="habit-item${done?' done':''}" onclick="toggleHabit('${h.id}')">
+        <div class="habit-icon">${h.icon}</div>
+        <div class="habit-name">${h.name}</div>
+        <div class="check">${done?'✓':''}</div>
+      </div>`;
+    });
+  });
+  document.getElementById('habitList').innerHTML=html;
+  const done=habits.filter(h=>!!log[h.id]).length, total=habits.length;
+  document.getElementById('scoreText').textContent=`${done}/${total}`;
+  document.getElementById('progressBar').style.width=total?(done/total*100)+'%':'0%';
+  const streak=calcStreak(habits);
+  document.getElementById('streakText').textContent=streak>0?`🔥 ${streak} day streak`:'';
+}
+function toggleHabit(id) { const k=todayKey(),l=loadLog(k); l[id]=!l[id]; if(!l[id])delete l[id]; saveLog(k,l); renderToday(); }
+function calcStreak(habits) {
+  if (!habits.length) return 0;
+  let streak = 0;
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const done = habits.filter(h => !!loadLog(k)[h.id]).length;
+    if (done === habits.length) {
+      streak++;
+    } else if (i === 0) {
+      continue; // today incomplete — keep checking past days
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+// ── CALENDAR ──
+let calYear, calMonth;
+function initCal() { const n=new Date(); calYear=n.getFullYear(); calMonth=n.getMonth(); renderCal(); }
+function changeMonth(d) { calMonth+=d; if(calMonth>11){calMonth=0;calYear++;} if(calMonth<0){calMonth=11;calYear--;} renderCal(); }
+function renderCal() {
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('calMonthLabel').textContent=`${months[calMonth]} ${calYear}`;
+  const first=new Date(calYear,calMonth,1).getDay(), days=new Date(calYear,calMonth+1,0).getDate();
+  const today=new Date();
+  let html=['Su','Mo','Tu','We','Th','Fr','Sa'].map(d=>`<div class="cal-day-name">${d}</div>`).join('');
+  for(let i=0;i<first;i++) html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=days;d++){
+    const k=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=d===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear();
+    const s=localStorage.getItem('log_'+k);
+    const hasData=s&&Object.keys(JSON.parse(s)).length>0;
+    html+=`<div class="cal-day${isToday?' today':''}${hasData?' has-data':''}" onclick="showDay('${k}')">${d}</div>`;
+  }
+  document.getElementById('calGrid').innerHTML=html;
+  document.getElementById('dayDetail').style.display='none';
+}
+function showDay(key) {
+  const habits=loadHabits(), det=document.getElementById('dayDetail');
+  const today=new Date(); today.setHours(0,0,0,0);
+  const clicked=new Date(key+'T00:00:00');
+  const isFuture=clicked>today, isPast=clicked<today;
+  if(isFuture){ det.innerHTML=`<h3>${key}</h3><div style="color:#aaa;font-size:0.88rem;padding:8px 0">🔒 Future dates can't be edited.</div>`; det.style.display='block'; return; }
+  renderDayDetail(key, isPast);
+}
+
+function renderDayDetail(key, isPast) {
+  const habits=loadHabits(), log=loadLog(key), det=document.getElementById('dayDetail');
+  const fmt=new Date(key+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  let html=`<h3>${isPast?'✏️ ':'' }${fmt}</h3>`;
+  if(isPast) html+=`<div style="font-size:0.75rem;color:var(--sub);margin-bottom:10px">Tap any habit to toggle — changes save instantly</div>`;
+  habits.forEach(h=>{
+    const done=!!log[h.id];
+    html+=`<div class="day-log-item" 
+      ${isPast?`onclick="togglePastHabit('${key}','${h.id}',this)"`:''} 
+      style="${isPast?'cursor:pointer;border-radius:8px;padding:8px;margin:-2px -4px;':''}" 
+      id="dli-${key}-${h.id}">
+      <div class="dot ${done?'done':'miss'}" id="dot-${key}-${h.id}"></div>
+      ${h.icon} ${h.name}
+      ${isPast?`<span style="margin-left:auto;font-size:0.85rem;color:${done?'var(--green)':'#ccc'}" id="chk-${key}-${h.id}">${done?'✓':'○'}</span>`:''}
+    </div>`;
+  });
+  det.innerHTML=html; det.style.display='block';
+}
+
+function togglePastHabit(key, id, el) {
+  const l=loadLog(key);
+  l[id]=!l[id]; if(!l[id]) delete l[id];
+  saveLog(key,l);
+  // update just this row in-place, no full re-render
+  const done=!!l[id];
+  const dot=document.getElementById(`dot-${key}-${id}`);
+  const chk=document.getElementById(`chk-${key}-${id}`);
+  if(dot){ dot.className=`dot ${done?'done':'miss'}`; }
+  if(chk){ chk.textContent=done?'✓':'○'; chk.style.color=done?'var(--green)':'#ccc'; }
+  el.style.background=done?'var(--done)':'';
+  // silently update calendar dot for this date only
+  const calEl = document.querySelector(`.cal-day[onclick="showDay('${key}')"]`);
+  if(calEl) {
+    const hasData = Object.keys(l).length > 0;
+    calEl.classList.toggle('has-data', hasData);
+  }
+}
+
+// ── STATS ──
+function renderStats() {
+  const habits=loadHabits(), streak=calcStreak(habits);
+  let totalDays=0, perfectDays=0, counts={};
+  habits.forEach(h=>counts[h.id]=0);
+  for(let i=0;i<90;i++){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const s=localStorage.getItem('log_'+k);
+    if(s&&Object.keys(JSON.parse(s)).length>0){ totalDays++; const l=JSON.parse(s); if(Object.keys(l).length===habits.length&&habits.length>0) perfectDays++; habits.forEach(h=>{if(l[h.id])counts[h.id]++;}); }
+  }
+  const best=habits.slice().sort((a,b)=>counts[b.id]-counts[a.id])[0];
+  document.getElementById('statsContent').innerHTML=`
+    <div class="stat-card"><div class="stat-icon">🔥</div><div><div class="stat-val">${streak}</div><div class="stat-label">Current Streak (days)</div></div></div>
+    <div class="stat-card"><div class="stat-icon">📅</div><div><div class="stat-val">${totalDays}</div><div class="stat-label">Days Logged (last 90)</div></div></div>
+    <div class="stat-card"><div class="stat-icon">⭐</div><div><div class="stat-val">${perfectDays}</div><div class="stat-label">Perfect Days</div></div></div>
+    ${best?`<div class="stat-card"><div class="stat-icon">${best.icon}</div><div><div class="stat-val">${counts[best.id]}</div><div class="stat-label">Most Consistent: ${best.name}</div></div></div>`:''}
+  `;
+}
+
+// ── MANAGE ──
+function renderManage() {
+  const habits=loadHabits(), cats=[...new Set(habits.map(h=>h.cat))];
+  let html='';
+  cats.forEach(cat=>{
+    html+=`<div class="section-title">${CAT_ICONS[cat]||'🔹'} ${cat}</div>`;
+    habits.filter(h=>h.cat===cat).forEach(h=>{
+      html+=`<div class="habit-item" onclick="openEditModal('${h.id}')">
+        <div class="habit-icon">${h.icon}</div>
+        <div class="habit-name">${h.name}</div>
+        <div style="font-size:0.75rem;color:#aaa">✏️ edit</div>
+      </div>`;
+    });
+  });
+  document.getElementById('manageList').innerHTML=html;
+  renderCatPick();
+  let ep='';
+  EMOJIS.forEach(e=>ep+=`<span class="${e===selEmoji?'sel':''}" onclick="pickEmoji('${e}')">${e}</span>`);
+  document.getElementById('emojiPick').innerHTML=ep;
+}
+
+function renderCatPick() {
+  const cats=loadCats();
+  if(!cats.includes(selCat)) selCat=cats[0];
+  document.getElementById('catPick').innerHTML=cats.map(c=>
+    `<span class="cat-btn${c===selCat?' sel':''}" onclick="pickCat('${c}')">${CAT_ICONS[c]||'🔹'} ${c}</span>`
+  ).join('');
+}
+
+function pickCat(cat) { selCat=cat; renderCatPick(); }
+function pickEmoji(e) { selEmoji=e; renderManage(); }
+
+function addCategory() {
+  const name=document.getElementById('newCatName').value.trim();
+  if(!name) return;
+  const cats=loadCats();
+  if(cats.map(c=>c.toLowerCase()).includes(name.toLowerCase())) { alert('Category already exists!'); return; }
+  cats.push(name); saveCats(cats); selCat=name;
+  document.getElementById('newCatName').value='';
+  renderManage();
+}
+
+function addHabit() {
+  const name=document.getElementById('newHabitName').value.trim();
+  if(!name) return;
+  const habits=loadHabits();
+  habits.push({id:'custom_'+Date.now(), name, icon:selEmoji, cat:selCat});
+  saveHabits(habits);
+  document.getElementById('newHabitName').value='';
+  renderManage(); renderToday();
+}
+
+function deleteHabit(id) {
+  if(!confirm('Remove this habit?')) return;
+  saveHabits(loadHabits().filter(h=>h.id!==id));
+  renderManage(); renderToday();
+}
+
+// ── EDIT MODAL ──
+function openEditModal(id) {
+  editingId=id;
+  const habits=loadHabits(), h=habits.find(x=>x.id===id);
+  if(!h) return;
+  editSelEmoji=h.icon;
+  document.getElementById('editName').value=h.name;
+
+  // populate category dropdown with all cats
+  const cats=loadCats();
+  const allCats=[...new Set([...cats,...habits.map(x=>x.cat)])];
+  document.getElementById('editCat').innerHTML=allCats.map(c=>
+    `<option value="${c}" ${c===h.cat?'selected':''}>${CAT_ICONS[c]||'🔹'} ${c}</option>`
+  ).join('');
+
+  // emoji picker
+  let ep='';
+  EMOJIS.forEach(e=>ep+=`<span class="${e===editSelEmoji?'sel':''}" onclick="pickEditEmoji('${e}')">${e}</span>`);
+  document.getElementById('editEmojiPick').innerHTML=ep;
+
+  document.getElementById('editModal').classList.add('open');
+}
+
+function pickEditEmoji(e) {
+  editSelEmoji=e;
+  document.querySelectorAll('#editEmojiPick span').forEach(s=>s.classList.toggle('sel', s.textContent===e));
+}
+
+function saveHabitEdit() {
+  const name=document.getElementById('editName').value.trim();
+  const cat=document.getElementById('editCat').value;
+  if(!name) return;
+  const habits=loadHabits(), h=habits.find(x=>x.id===editingId);
+  if(!h) return;
+  h.name=name; h.cat=cat; h.icon=editSelEmoji;
+  saveHabits(habits);
+  closeEditModal(); renderManage(); renderToday();
+}
+
+function closeEditModal() { document.getElementById('editModal').classList.remove('open'); editingId=null; }
+function closeModal(e) { if(e.target===document.getElementById('editModal')) closeEditModal(); }
+
+// ── NAV ──
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(name==='calendar') renderCal();
+  if(name==='stats') renderStats();
+  if(name==='manage') renderManage();
+  if(name==='today') renderToday();
+}
+
+// ── INIT ──
+const now=new Date();
+document.getElementById('headerDate').textContent=now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+renderToday(); initCal();
+</script>
+</body>
+</html>
